@@ -1,11 +1,59 @@
-
-# tasks = []
+import tkinter as tk
+from tkinter import ttk
+from tkcalendar import DateEntry
 from datetime import datetime
 import json
 file= open("data.json", "r")
 x=file.read()
 finaldata=json.loads(x)
 
+# ---------------------------------
+# GUI Implementation
+
+root = tk.Tk()
+root.geometry("800x600")
+root.title("To-do app")
+
+button_frame= tk.Frame(root)
+button_frame.pack(pady=10)
+
+msg_frame = tk.Frame(root)
+msg_frame.pack()
+
+tree_frame = tk.Frame(root)
+tree_frame.pack(fill="both", expand=True) 
+
+# listbox = tk.Listbox(root)
+# listbox.pack(fill="both", expand=True)
+
+tree = ttk.Treeview(tree_frame,
+                    columns=("Serial", "Task", "Status", "Due Date"), 
+                    show="headings" )
+
+# tree.pack(side="left", fill="both", expand=True) 
+
+tree.heading("Serial", text="Serial")
+tree.heading("Task", text="Task")
+tree.heading("Status", text="Status")
+tree.heading("Due Date", text="Due Date")
+
+
+scrollbar = ttk.Scrollbar(
+    tree_frame,
+    orient="vertical",
+    command=tree.yview
+)
+
+# scrollbar.pack(side="right", fill="y")
+
+tree.configure(yscrollcommand=scrollbar.set)
+
+
+tree.grid(row=0, column=0, sticky="nsew")
+scrollbar.grid(row=0, column=1, sticky="ns")
+
+tree_frame.grid_rowconfigure(0, weight=1)
+tree_frame.grid_columnconfigure(0, weight=1)
 
 
 def generateID():
@@ -32,8 +80,20 @@ def updateJSON(data):
 
 
 def viewAllTasks():
+
+    for widget in msg_frame.winfo_children():
+        widget.destroy()
+
+    for row in tree.get_children():
+        tree.delete(row)
+
+
     if len(finaldata) == 0:
-        print("No tasks found.")
+        msg = "No tasks found."
+        label = tk.Label(msg_frame, text= f"{msg}")
+        label.pack() 
+
+       
     else:
         sln = 1
         for item in finaldata:
@@ -41,13 +101,26 @@ def viewAllTasks():
             status= "Pending"
             if item["completed"] == True:
                 status = "Completed"
-            print(f"{sln} . {item["title"]} ({status})")
+            txt = f"{sln} . {item["title"]} ({status})\n Due date-{item["due_date"]}"
+            # label = tk.Label(msg_frame, text= f"{txt}")
+            # label.pack()
+
+            tree.insert("",
+                        tk.END,
+                        values=(sln,
+                                item["title"],
+                                status,
+                                item["due_date"]
+                                ))
+
+
             sln += 1
 
 def addTask(taskParam):
     finaldata.append(taskParam)
     # write_file= open("data.json", "w")
     # json.dump(finaldata, write_file, indent=4)
+
 
     updateJSON(finaldata)
     print("Task added")
@@ -73,29 +146,57 @@ def updateStatus(sln, status):
     updateJSON(finaldata)
     print("Task Updated")
 
+def updateData(sln, title, date, status):
+  
+    index = sln - 1 
+    item = finaldata[index]
+    item["title"] = title
+    item["due_date"]= date
 
-def removeTask():
+    if status == "Completed":
+        item["completed"] = True
+    elif status == "Pending":
+        item["completed"] = False
+        
+    updateJSON(finaldata)
+    print("Task Updated")
+
+def removeTask(sln):
     viewAllTasks()
-    toRemove = int(input("Enter task number: "))
+    toRemove = int(sln)
     finaldata.pop(toRemove-1)
     updateJSON(finaldata)
 
-while True:
-    print("-TO-DO LIST-")
-    print("1. View All Tasks")
-    print("2. Add Task")
-    print("3. Remove Task")
-    print("4. Update status")
-    print("5. Exit")
 
-    choice = input("Enter your choice: ")
 
-    if choice == "1":
-        viewAllTasks()
 
-    elif choice == "2":
-        task_title = input("Enter a task: ")
-        due_date= input("Due date(d-m-y): ")
+
+viewAllTasks()
+
+task_label= tk.Label(button_frame, text="Enter your task: ")
+task_label.pack(side="left", padx=5)
+
+task_title_input = tk.Entry(button_frame)
+task_title_input.pack(side="left", padx=5)
+
+due_date_input = DateEntry(button_frame, date_pattern="dd-mm-yyyy")
+due_date_input.pack(side="left", padx=5)
+
+
+is_edit= False
+
+
+def submitTask():
+
+    global is_edit
+
+    task_title = task_title_input.get().strip()
+    due_date= due_date_input.get().strip()
+    if task_title == "" or due_date == "":
+        return 
+        
+    if is_edit == False :
+        
         newID= generateID()
         current_time= dateTime()
         new_task = {
@@ -105,28 +206,84 @@ while True:
             "created_at": current_time,
             "due_date": due_date
         }
+
         addTask(new_task)
-        viewAllTasks()
-
-    elif choice == "3":
-        if len(finaldata) == 0:
-            print("No tasks to remove")
-        else:
-            removeTask()
-
-            viewAllTasks()
-
-    elif choice == "4":
-        print("Update")
-        viewAllTasks()
-        task_to_update = int(input("Enter task number: "))
-        task_status = int(input("write 1 if completed, write 2 if due: "))
-        updateStatus(task_to_update, task_status)
-        viewAllTasks()
-
-    elif choice == "5":
-        print("Goodbye!")
-        break
-
     else:
-        print("Invalid choice.")
+        selected_row = tree.selection()
+        
+        if selected_row:
+            row_data = tree.item(selected_row[0], "values") 
+
+        sln = int(row_data[0])
+
+        task_status = status.get()
+
+        updateData(sln, task_title, due_date, task_status)
+
+        is_edit = False
+
+    task_title_input.delete(0, tk.END)
+
+
+    viewAllTasks()
+
+
+
+# submit_btn = tk.Button(root, text="Submit", command = submitTask)
+# submit_btn.pack()
+
+
+
+def editTask():
+
+    global is_edit
+
+    is_edit = True
+    selected_row = tree.selection()
+
+    if selected_row:
+        row_data = tree.item(selected_row[0], "values") 
+
+        task_title_input.delete(0, tk.END)
+        task_title_input.insert(0, row_data[1])
+
+        due_date_input.set_date(row_data[3])
+
+
+def delTask():
+    selected_row = tree.selection()
+    
+    if selected_row:
+        row_data = tree.item(selected_row[0], "values") 
+
+    removeTask(row_data[0])
+
+    viewAllTasks()
+
+
+
+status = tk.StringVar()
+status.set("Pending")
+
+status_dropdown = tk.OptionMenu(
+    button_frame,
+    status,
+    "Pending",
+    "Completed"
+)
+status_dropdown.pack(side="left", padx=5)
+
+
+
+
+edit_btn = tk.Button(button_frame, text="Edit", command = editTask)
+edit_btn.pack(side="left")
+
+submit_btn = tk.Button(button_frame, text="Submit", command = submitTask)
+submit_btn.pack(side="left")
+
+del_btn = tk.Button(button_frame, text="Delete", command = delTask)
+del_btn.pack(side="left")
+
+
+root.mainloop()
