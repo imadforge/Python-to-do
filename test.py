@@ -20,6 +20,15 @@ button_frame.pack(pady=10)
 msg_frame = tk.Frame(root)
 msg_frame.pack()
 
+search_frame = tk.Frame(root)
+search_frame.pack()
+
+search_label= tk.Label(search_frame, text="Search your task: ")
+search_label.pack(side="left", padx=5)
+
+search_input = tk.Entry(search_frame, width= 20)
+search_input.pack(side="left", padx=5)
+
 tree_frame = tk.Frame(root)
 tree_frame.pack(fill="both", expand=True) 
 
@@ -73,13 +82,53 @@ def dateTime():
 
 
 
+def searchTask():
+
+    search_keyword = search_input.get().strip()
+
+    for row in tree.get_children():
+        tree.delete(row)
+
+    sln = 1
+
+    for item in finaldata:
+        if search_keyword.lower() in item["title"].lower():
+
+            status = "Pending"
+
+            if item["completed"] == True:
+                status="Completed"
+
+
+            tree.insert(
+                "", tk.END,
+                values=(
+                    sln,
+                    item["title"],
+                    status,
+                    item["due_date"]
+                )
+            )
+
+            sln = sln+1
+
+
+
+
+
+
 
 def updateJSON(data):
+    
     write_file= open("data.json", "w")
     json.dump(data, write_file, indent=4)
 
 
 def viewAllTasks():
+
+    global search_input
+
+    search_input.delete(0, tk.END)
 
     for widget in msg_frame.winfo_children():
         widget.destroy()
@@ -173,6 +222,9 @@ def removeTask(sln):
 
 viewAllTasks()
 
+
+
+
 task_label= tk.Label(button_frame, text="Enter your task: ")
 task_label.pack(side="left", padx=5)
 
@@ -262,6 +314,15 @@ def delTask():
 
 
 
+
+
+
+
+
+
+submit_btn = tk.Button(button_frame, text="Submit", command = submitTask)
+submit_btn.pack(side="left")
+
 status = tk.StringVar()
 status.set("Pending")
 
@@ -273,71 +334,17 @@ status_dropdown = tk.OptionMenu(
 )
 status_dropdown.pack(side="left", padx=5)
 
-
-
-
 edit_btn = tk.Button(button_frame, text="Edit", command = editTask)
 edit_btn.pack(side="left")
 
-submit_btn = tk.Button(button_frame, text="Submit", command = submitTask)
-submit_btn.pack(side="left")
+search_btn = tk.Button(search_frame, text="Search", command=searchTask)
+search_btn.pack(side="left", padx=5)
+
+view_all_btn = tk.Button(search_frame, text="View All Tasks", command=viewAllTasks)
+view_all_btn.pack(side="left", padx=5)
 
 del_btn = tk.Button(button_frame, text="Delete", command = delTask)
 del_btn.pack(side="left")
-
-
-while True:
-    print("-TO-DO LIST-")
-    print("1. View All Tasks")
-    print("2. Add Task")
-    print("3. Remove Task")
-    print("4. Update status")
-    print("5. Exit")
-
-    choice = input("Enter your choice: ")
-
-    if choice == "1":
-        viewAllTasks()
-
-    elif choice == "2":
-        task_title = input("Enter a task: ")
-        due_date= input("Due date(d-m-y): ")
-        newID= generateID()
-        current_time= dateTime()
-        new_task = {
-            "id": newID,
-            "title": task_title,
-            "completed": False,
-            "created_at": current_time,
-            "due_date": due_date
-        }
-        addTask(new_task)
-        viewAllTasks()
-
-    elif choice == "3":
-        if len(finaldata) == 0:
-            print("No tasks to remove")
-        else:
-            removeTask()
-
-            viewAllTasks()
-
-    elif choice == "4":
-        print("Update")
-        viewAllTasks()
-        task_to_update = int(input("Enter task number: "))
-        task_status = int(input("write 1 if completed, write 2 if due: "))
-        updateStatus(task_to_update, task_status)
-        viewAllTasks()
-
-    elif choice == "5":
-        print("Goodbye!")
-        break
-
-    else:
-        print("Invalid choice.")
-
-
 
 
 root.mainloop()
